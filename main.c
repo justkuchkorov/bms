@@ -1,25 +1,45 @@
-// Define the hardware pins our sensors are plugged into
 #define VOLTAGE_PIN A0
 #define CURRENT_PIN A1
 #define TEMP_PIN A2
+#define CONTACTOR_PIN 13 // Our simulated safety relay
+
+// Hardcoded Lithium-Ion Safety Limits
+const float MAX_VOLTAGE = 4.2;
+const float MIN_VOLTAGE = 3.0;
 
 void setup() {
-  // Initialize the serial monitor so we can see the data output
   Serial.begin(9600);
-  Serial.println("BMS Telemetry Initialized...");
+  pinMode(CONTACTOR_PIN, OUTPUT);
+  
+  // Start with the contactor CLOSED (LED ON) assuming the battery is safe
+  digitalWrite(CONTACTOR_PIN, HIGH); 
+  Serial.println("BMS Telemetry & Safety Initialized...");
 }
 
 void loop() {
-  // 1. Read the raw ADC values from the hardware (0 to 1023)
+  // 1. Read raw ADC data
   int rawVoltage = analogRead(VOLTAGE_PIN);
-  int rawCurrent = analogRead(CURRENT_PIN);
-  int rawTemp = analogRead(TEMP_PIN);
+  
+  // 2. Convert raw ADC (0-1023) to Actual Voltage (0.0V - 5.0V)
+  float actualVoltage = (rawVoltage / 1023.0) * 5.0;
 
-  // 2. Print the raw data to the Serial Monitor
-  Serial.print("V_Raw: "); Serial.print(rawVoltage);
-  Serial.print(" | I_Raw: "); Serial.print(rawCurrent);
-  Serial.print(" | T_Raw: "); Serial.println(rawTemp);
+  Serial.print("Battery Voltage: "); 
+  Serial.print(actualVoltage); 
+  Serial.println(" V");
 
-  // Run this loop every 500 milliseconds
+  // 3. THE SAFETY LOOP (The Bouncer)
+  if (actualVoltage > MAX_VOLTAGE) {
+    digitalWrite(CONTACTOR_PIN, LOW); // CUT THE POWER!
+    Serial.println("CRITICAL FAULT: OVER-VOLTAGE DETECTED!");
+  } 
+  else if (actualVoltage < MIN_VOLTAGE) {
+    digitalWrite(CONTACTOR_PIN, LOW); // CUT THE POWER!
+    Serial.println("CRITICAL FAULT: UNDER-VOLTAGE DETECTED!");
+  } 
+  else {
+    // Voltage is safe, keep contactor closed
+    digitalWrite(CONTACTOR_PIN, HIGH); 
+  }
+
   delay(500);
 }
